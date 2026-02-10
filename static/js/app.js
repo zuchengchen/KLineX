@@ -7,6 +7,8 @@ const INTERVAL_MS = {
 const App = {
     currentSymbol: 'BTCUSDT',
     currentInterval: '1h',
+    _backfillTimer: null,
+    _backfillSymbol: null,
 
     async init() {
         ChartManager.init(document.getElementById('chart-container'));
@@ -16,6 +18,7 @@ const App = {
             this.currentSymbol = symbol;
             document.getElementById('current-symbol').textContent = symbol;
             this.loadData();
+            this._startBackfill(symbol);
         });
 
         document.querySelectorAll('.interval-btn').forEach(btn => {
@@ -24,6 +27,7 @@ const App = {
                 btn.classList.add('active');
                 this.currentInterval = btn.dataset.interval;
                 this.loadData();
+                this._startBackfill(this.currentSymbol);
             });
         });
 
@@ -118,6 +122,38 @@ const App = {
 
     setStatus(msg) {
         document.getElementById('status-bar').textContent = msg;
+    },
+
+    _startBackfill(symbol) {
+        if (this._backfillTimer) {
+            clearInterval(this._backfillTimer);
+            this._backfillTimer = null;
+        }
+        this._backfillSymbol = symbol;
+
+        API.startBackfill(symbol, this.currentInterval).catch(e => {
+            console.warn('Backfill start failed:', e);
+        });
+
+        this._backfillTimer = setInterval(async () => {
+            if (this._backfillSymbol !== symbol) {
+                clearInterval(this._backfillTimer);
+                return;
+            }
+            try {
+                const status = await API.getBackfillStatus(symbol);
+                if (!status.running && status.done) {
+                    clearInterval(this._backfillTimer);
+                    this._backfillTimer = null;
+                    return;
+                }
+                if (status.running) {
+                    const progress = `Backfill ${symbol}: ${status.current_interval} ${status.current_month || ''}... (${status.completed_intervals}/${status.total_intervals} intervals)`;
+                    document.getElementById('status-bar').textContent = progress;
+                }
+            } catch (e) {
+            }
+        }, 2000);
     }
 };
 
