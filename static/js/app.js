@@ -43,6 +43,9 @@ const App = {
             const data = await API.getKlines(this.currentSymbol, this.currentInterval, startMs, endMs);
             if (data.klines && data.klines.length > 0) {
                 ChartManager.prependKlineData(data.klines);
+                if (IndicatorUI.activeIndicators.length > 0) {
+                    await this.loadIndicators();
+                }
             }
             const total = ChartManager._klineData.length;
             this.setStatus(`${this.currentSymbol} ${this.currentInterval} — ${total} candles`);
@@ -74,9 +77,14 @@ const App = {
         const specs = IndicatorUI.getActiveSpecs();
         if (!specs) return;
 
+        const earliest = ChartManager.getEarliestTime();
+        const latest = ChartManager.getLatestTime();
+        const startMs = earliest ? earliest * 1000 : undefined;
+        const endMs = latest ? latest * 1000 + (INTERVAL_MS[this.currentInterval] || 3600000) : undefined;
+
         this.setStatus('Computing indicators...');
         try {
-            const data = await API.getIndicators(this.currentSymbol, this.currentInterval, specs);
+            const data = await API.getIndicators(this.currentSymbol, this.currentInterval, specs, startMs, endMs);
             ChartManager.clearAllIndicators();
 
             for (const ind of IndicatorUI.activeIndicators) {

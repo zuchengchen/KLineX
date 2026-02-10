@@ -75,6 +75,10 @@ const ChartManager = {
         return this._klineData.length > 0 ? this._klineData[0].time : null;
     },
 
+    getLatestTime() {
+        return this._klineData.length > 0 ? this._klineData[this._klineData.length - 1].time : null;
+    },
+
     addOverlaySeries(spec, data, color) {
         const series = this.chart.addSeries(
             LightweightCharts.LineSeries,
