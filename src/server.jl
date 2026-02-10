@@ -56,12 +56,14 @@ function setup(port::Int)
         end
 
         df = DB.get_klines(symbol, interval; start_time=start_time, end_time=end_time)
+        expected_count = div(end_time - start_time, interval_ms) + 1
+        is_complete = !has_cache || nrow(df) >= min(1400, round(Int, expected_count * 0.9))
         klines = [Dict(
             "time" => div(r.open_time, 1000),
             "open" => r.open, "high" => r.high, "low" => r.low, "close" => r.close,
             "volume" => r.volume
         ) for r in eachrow(df)]
-        return json(Dict("klines" => klines, "count" => length(klines), "complete" => !has_cache || nrow(df) >= 1400))
+        return json(Dict("klines" => klines, "count" => length(klines), "complete" => is_complete))
     end
 
     @get "/api/indicators" function(req)

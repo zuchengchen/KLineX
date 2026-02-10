@@ -9,8 +9,10 @@ const App = {
     currentInterval: '1h',
     _backfillTimer: null,
     _backfillSymbol: null,
+    _backfillDelay: null,
     _refreshTimer: null,
     _refreshCount: 0,
+    _loadGeneration: 0,
 
     async init() {
         ChartManager.init(document.getElementById('chart-container'));
@@ -59,12 +61,18 @@ const App = {
     },
 
     async loadData() {
+        const gen = ++this._loadGeneration;
         this._cancelRefresh();
+        if (this._backfillDelay) {
+            clearTimeout(this._backfillDelay);
+            this._backfillDelay = null;
+        }
         this.setStatus(`Loading ${this.currentSymbol} ${this.currentInterval}...`);
         ChartManager.clearAllIndicators();
 
         try {
             const data = await API.getKlines(this.currentSymbol, this.currentInterval);
+            if (gen !== this._loadGeneration) return;
             if (data.klines && data.klines.length > 0) {
                 ChartManager.setKlineData(data.klines);
                 if (data.complete) {
@@ -80,11 +88,13 @@ const App = {
                 this.setStatus('No data available');
             }
         } catch (e) {
+            if (gen !== this._loadGeneration) return;
             this.setStatus(`Error: ${e.message}`);
         }
 
         // Start backfill AFTER main data is loaded (2s delay to avoid resource contention)
-        setTimeout(() => {
+        this._backfillDelay = setTimeout(() => {
+            this._backfillDelay = null;
             this._startBackfill(this.currentSymbol);
         }, 2000);
     },
@@ -104,9 +114,12 @@ const App = {
 
     _doRefresh() {
         if (this._refreshCount >= 10) return;
+        const gen = this._loadGeneration;
         this._refreshTimer = setTimeout(async () => {
+            if (gen !== this._loadGeneration) return;
             try {
                 const data = await API.getKlines(this.currentSymbol, this.currentInterval);
+                if (gen !== this._loadGeneration) return;
                 if (data.klines && data.klines.length > 0) {
                     ChartManager.setKlineData(data.klines);
                     if (data.complete) {
@@ -120,6 +133,7 @@ const App = {
                 }
             } catch (e) {
             }
+            if (gen !== this._loadGeneration) return;
             this._refreshCount++;
             this._doRefresh();
         }, 3000);
@@ -195,7 +209,7 @@ const App = {
                     this._backfillTimer = null;
                     return;
                 }
-                if (status.running) {
+                if (status.running && !this._refreshTimer) {
                     const progress = `Backfill ${symbol}: ${status.current_interval} ${status.current_month || ''}... (${status.completed_intervals}/${status.total_intervals} intervals)`;
                     document.getElementById('status-bar').textContent = progress;
                 }
