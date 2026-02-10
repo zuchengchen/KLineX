@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KLineX</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Top bar -->
+        <div class="toolbar">
+            <div class="search-container">
+                <input type="text" id="symbol-search" placeholder="Search symbol..." autocomplete="off">
+                <div id="search-dropdown" class="dropdown hidden"></div>
+            </div>
+            <div class="current-symbol" id="current-symbol">BTCUSDT</div>
+            <div class="interval-bar" id="interval-bar">
+                <button class="interval-btn" data-interval="1m">1m</button>
+                <button class="interval-btn" data-interval="5m">5m</button>
+                <button class="interval-btn" data-interval="15m">15m</button>
+                <button class="interval-btn active" data-interval="1h">1h</button>
+                <button class="interval-btn" data-interval="4h">4h</button>
+                <button class="interval-btn" data-interval="1d">1d</button>
+            </div>
+        </div>
+
+        <!-- Chart container -->
+        <div id="chart-container"></div>
+
+        <!-- Bottom bar: indicators -->
+        <div class="indicator-bar">
+            <button id="add-indicator-btn" class="add-btn">+ Add Indicator</button>
+            <div id="active-indicators" class="active-indicators"></div>
+        </div>
+
+        <!-- Indicator selection modal -->
+        <div id="indicator-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add Indicator</h3>
+                    <button class="modal-close" id="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <h4>Trend (Overlay)</h4>
+                    <div class="indicator-list">
+                        <button class="indicator-option" data-indicator="ema" data-defaults="20">EMA</button>
+                        <button class="indicator-option" data-indicator="sma" data-defaults="50">SMA</button>
+                        <button class="indicator-option" data-indicator="boll" data-defaults="20:2">BOLL</button>
+                    </div>
+                    <h4>Oscillator (Sub-pane)</h4>
+                    <div class="indicator-list">
+                        <button class="indicator-option" data-indicator="macd" data-defaults="12:26:9">MACD</button>
+                        <button class="indicator-option" data-indicator="rsi" data-defaults="14">RSI</button>
+                        <button class="indicator-option" data-indicator="cci" data-defaults="20">CCI</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parameter edit modal -->
+        <div id="param-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="param-modal-title">Parameters</h3>
+                    <button class="modal-close" id="param-modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="param-modal-body"></div>
+                <div class="modal-footer">
+                    <button id="param-modal-ok" class="btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status bar -->
+        <div class="status-bar" id="status-bar">Ready</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/chart.js"></script>
+    <script src="/js/search.js"></script>
+    <script src="/js/indicators.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
