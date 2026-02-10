@@ -1,0 +1,8 @@
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DefaultApplication = "3f0dd361-4fe0-5fc6-8523-80b14ec94d85"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+Oxygen = "df9a0d86-3283-4920-82dc-4555fc0d1d8b"
+SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
+StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
