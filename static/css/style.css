@@ -221,3 +221,56 @@ body {
     background: var(--bg-secondary);
     border-top: 1px solid var(--border);
 }
+
+/* Candlestick tooltip (TradingView-style) */
+.candle-tooltip {
+    position: absolute;
+    display: none;
+    background: rgba(33, 37, 48, 0.95);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    pointer-events: none;
+    z-index: 100;
+    min-width: 160px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.candle-tooltip .tooltip-time {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+.candle-tooltip .tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    line-height: 1.6;
+}
+.candle-tooltip .tooltip-label {
+    color: var(--text-secondary);
+}
+.candle-tooltip .tooltip-value {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+.candle-tooltip .tooltip-value.up { color: var(--green); }
+.candle-tooltip .tooltip-value.down { color: var(--red); }
+.candle-tooltip .tooltip-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 6px 0;
+}
+.candle-tooltip .indicator-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    line-height: 1.5;
+    font-size: 11px;
+}
+.candle-tooltip .indicator-label {
+    color: var(--text-secondary);
+}
+.candle-tooltip .indicator-value {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}

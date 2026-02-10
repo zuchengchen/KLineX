@@ -153,6 +153,7 @@ const App = {
         try {
             const data = await API.getIndicators(this.currentSymbol, this.currentInterval, specs, startMs, endMs);
             ChartManager.clearAllIndicators();
+            ChartManager.clearIndicatorData();
 
             for (const ind of IndicatorUI.activeIndicators) {
                 const result = data[ind.spec];
@@ -170,15 +171,31 @@ const App = {
         if (name === 'ema' || name === 'sma') {
             const series = ChartManager.addOverlaySeries(spec, result.data, INDICATOR_COLORS[name]);
             entry = { series: [series], paneIndex: 0 };
+            ChartManager.setIndicatorData(spec, result.data);
         } else if (name === 'boll') {
             const seriesList = ChartManager.addOverlayMulti(spec, {
                 upper: result.upper, middle: result.middle, lower: result.lower
             }, INDICATOR_COLORS.boll);
             entry = { series: seriesList, paneIndex: 0 };
+            const combinedData = result.upper.map((u, i) => ({
+                time: u.time,
+                upper: u.value,
+                middle: result.middle[i]?.value,
+                lower: result.lower[i]?.value
+            }));
+            ChartManager.setIndicatorData(spec, combinedData);
         } else if (name === 'macd') {
             entry = ChartManager.addMACDSeries(spec, result.macd, result.signal, result.histogram);
+            const combinedData = result.macd.map((m, i) => ({
+                time: m.time,
+                macd: m.value,
+                signal: result.signal[i]?.value,
+                histogram: result.histogram[i]?.value
+            }));
+            ChartManager.setIndicatorData(spec, combinedData);
         } else if (name === 'rsi' || name === 'cci') {
             entry = ChartManager.addOscillatorSeries(spec, result.data, INDICATOR_COLORS[name]);
+            ChartManager.setIndicatorData(spec, result.data);
         }
         if (entry) ChartManager.seriesMap.set(spec, entry);
     },
