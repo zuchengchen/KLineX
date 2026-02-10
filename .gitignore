@@ -1,2 +1,20 @@
+# Data
 data/
 *.db
+
+# Dependencies
+node_modules/
+
+# Julia
+Manifest.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
