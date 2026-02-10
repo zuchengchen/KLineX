@@ -186,6 +186,7 @@ function vision_download_range(symbol::String, interval::String, start_ms::Int64
         y, m = ym
         month_dt = DateTime(y, m, 1)
         if month_dt < cutoff
+            # Try monthly zip first (only for months older than cutoff)
             url = "$VISION_BASE/monthly/klines/$symbol/$interval/$symbol-$interval-$(lpad(y,4,'0'))-$(lpad(m,2,'0')).zip"
             @info "Vision monthly: $url"
             klines = _download_vision_zip(url)
@@ -194,17 +195,19 @@ function vision_download_range(symbol::String, interval::String, start_ms::Int64
                 ym = _next_month(ym)
                 continue
             end
-        end
-        days_in = Dates.daysinmonth(y, m)
-        for d in 1:days_in
-            day_dt = DateTime(y, m, d)
-            day_dt >= now_dt && break
-            url = "$VISION_BASE/daily/klines/$symbol/$interval/$symbol-$interval-$(lpad(y,4,'0'))-$(lpad(m,2,'0'))-$(lpad(d,2,'0')).zip"
-            klines = _download_vision_zip(url)
-            if !isnothing(klines)
-                append!(all_klines, klines)
+            # Monthly zip failed for old month — fall back to daily zips for THIS month only
+            days_in = Dates.daysinmonth(y, m)
+            for d in 1:days_in
+                day_dt = DateTime(y, m, d)
+                day_dt >= now_dt && break
+                url = "$VISION_BASE/daily/klines/$symbol/$interval/$symbol-$interval-$(lpad(y,4,'0'))-$(lpad(m,2,'0'))-$(lpad(d,2,'0')).zip"
+                klines = _download_vision_zip(url)
+                if !isnothing(klines)
+                    append!(all_klines, klines)
+                end
             end
         end
+        # Recent months (>= cutoff): SKIP — caller uses REST API to fill the gap
         ym = _next_month(ym)
     end
     filter!(k -> k[1] >= start_ms && k[1] <= end_ms, all_klines)
