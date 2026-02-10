@@ -85,24 +85,31 @@ end
 
 function upsert_klines(symbol::String, interval::String, klines::Vector)
     db = get_db()
+    DBInterface.execute(db, "BEGIN TRANSACTION")
     stmt = DBInterface.prepare(db, """
         INSERT OR REPLACE INTO klines
         (symbol, interval, open_time, open, high, low, close, volume, close_time, quote_volume, trades)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """)
-    for k in klines
-        DBInterface.execute(stmt, (
-            symbol, interval,
-            k[1],                          # open_time
-            parse(Float64, string(k[2])),  # open
-            parse(Float64, string(k[3])),  # high
-            parse(Float64, string(k[4])),  # low
-            parse(Float64, string(k[5])),  # close
-            parse(Float64, string(k[6])),  # volume
-            k[7],                          # close_time
-            parse(Float64, string(k[8])),  # quote_volume
-            k[9]                           # trades
-        ))
+    try
+        for k in klines
+            DBInterface.execute(stmt, (
+                symbol, interval,
+                k[1],                          # open_time
+                parse(Float64, string(k[2])),  # open
+                parse(Float64, string(k[3])),  # high
+                parse(Float64, string(k[4])),  # low
+                parse(Float64, string(k[5])),  # close
+                parse(Float64, string(k[6])),  # volume
+                k[7],                          # close_time
+                parse(Float64, string(k[8])),  # quote_volume
+                k[9]                           # trades
+            ))
+        end
+        DBInterface.execute(db, "COMMIT")
+    catch e
+        DBInterface.execute(db, "ROLLBACK")
+        rethrow(e)
     end
 end
 
