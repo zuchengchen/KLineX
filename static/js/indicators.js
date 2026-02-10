@@ -19,6 +19,7 @@ const INDICATOR_PARAMS = {
 const IndicatorUI = {
     activeIndicators: [],
     onChanged: null,
+    STORAGE_KEY: 'klinex_active_indicators',
 
     init(onChanged) {
         this.onChanged = onChanged;
@@ -40,6 +41,28 @@ const IndicatorUI = {
                 this._showParamModal(name, defaults);
             });
         });
+    },
+
+    _saveToStorage() {
+        const specs = this.activeIndicators.map(i => i.spec);
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(specs));
+    },
+
+    restore() {
+        try {
+            const saved = localStorage.getItem(this.STORAGE_KEY);
+            if (!saved) return;
+            const specs = JSON.parse(saved);
+            for (const spec of specs) {
+                const name = spec.split(':')[0];
+                if (INDICATOR_PARAMS[name]) {
+                    this.activeIndicators.push({ spec, name });
+                }
+            }
+            this._renderTags();
+        } catch (e) {
+            console.warn('Failed to restore indicators:', e);
+        }
     },
 
     _showModal() { document.getElementById('indicator-modal').classList.remove('hidden'); },
@@ -78,6 +101,7 @@ const IndicatorUI = {
         if (this.activeIndicators.find(i => i.spec === spec)) return;
         this.activeIndicators.push({ spec, name });
         this._renderTags();
+        this._saveToStorage();
         if (this.onChanged) this.onChanged();
     },
 
@@ -85,6 +109,8 @@ const IndicatorUI = {
         this.activeIndicators = this.activeIndicators.filter(i => i.spec !== spec);
         ChartManager.removeIndicator(spec);
         this._renderTags();
+        this._saveToStorage();
+        if (this.onChanged) this.onChanged();
     },
 
     _renderTags() {

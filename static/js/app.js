@@ -34,6 +34,7 @@ const App = {
         });
 
         IndicatorUI.init(() => this.loadIndicators());
+        IndicatorUI.restore();
 
         await this.loadData();
     },
