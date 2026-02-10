@@ -41,10 +41,18 @@ function setup(port::Int)
         start_time = parse(Int64, get(params, "start", string(default_start)))
         end_time = parse(Int64, get(params, "end", string(now_ms)))
 
-        try
-            ensure_klines(symbol, interval, start_time, end_time)
-        catch e
-            @warn "Failed to download klines: $e"
+        has_cache = has_cached_klines(symbol, interval, start_time, end_time)
+
+        if has_cache
+            # Have cached data — return immediately, download gaps in background
+            ensure_klines_async(symbol, interval, start_time, end_time)
+        else
+            # No cache — must download synchronously
+            try
+                ensure_klines(symbol, interval, start_time, end_time)
+            catch e
+                @warn "Failed to download klines: $e"
+            end
         end
 
         df = DB.get_klines(symbol, interval; start_time=start_time, end_time=end_time)
@@ -53,7 +61,7 @@ function setup(port::Int)
             "open" => r.open, "high" => r.high, "low" => r.low, "close" => r.close,
             "volume" => r.volume
         ) for r in eachrow(df)]
-        return json(Dict("klines" => klines, "count" => length(klines)))
+        return json(Dict("klines" => klines, "count" => length(klines), "complete" => !has_cache || nrow(df) >= 1400))
     end
 
     @get "/api/indicators" function(req)
@@ -119,6 +127,22 @@ function interval_to_ms(interval::String)
     val = parse(Int, interval[1:end-1])
     multipliers = Dict('m' => 60_000, 'h' => 3_600_000, 'd' => 86_400_000, 'w' => 604_800_000, 'M' => 2_592_000_000)
     return val * get(multipliers, unit, 60_000)
+end
+
+"""Check if we have ANY cached data overlapping with the requested range."""
+function has_cached_klines(symbol::String, interval::String, start_ms::Int64, end_ms::Int64)::Bool
+    existing = DB.get_kline_range(symbol, interval)
+    isnothing(existing) && return false
+    return existing.max_time >= start_ms && existing.min_time <= end_ms
+end
+
+"""Schedule kline download in background, return immediately."""
+function ensure_klines_async(symbol::String, interval::String, start_ms::Int64, end_ms::Int64)
+    @async try
+        ensure_klines(symbol, interval, start_ms, end_ms)
+    catch e
+        @warn "Background kline download failed: $e"
+    end
 end
 
 function ensure_klines(symbol::String, interval::String, start_ms::Int64, end_ms::Int64)
