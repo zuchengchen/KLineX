@@ -61,14 +61,15 @@ const App = {
     async loadData() {
         this.setStatus(`Loading ${this.currentSymbol} ${this.currentInterval}...`);
         ChartManager.clearAllIndicators();
-        IndicatorUI.activeIndicators = [];
-        IndicatorUI._renderTags();
 
         try {
             const data = await API.getKlines(this.currentSymbol, this.currentInterval);
             if (data.klines && data.klines.length > 0) {
                 ChartManager.setKlineData(data.klines);
                 this.setStatus(`${this.currentSymbol} ${this.currentInterval} — ${data.count} candles`);
+                if (IndicatorUI.activeIndicators.length > 0) {
+                    await this.loadIndicators();
+                }
             } else {
                 this.setStatus('No data available');
             }
