@@ -24,6 +24,7 @@ function setup(port::Int)
             DB.upsert_symbols(symbols)
             return json(Dict("status" => "ok", "count" => length(symbols)))
         catch e
+            @warn "Symbol sync failed: $e"
             return json(Dict("status" => "error", "message" => string(e)), status=500)
         end
     end
@@ -36,7 +37,7 @@ function setup(port::Int)
 
         now_ms = round(Int64, time() * 1000)
         interval_ms = interval_to_ms(interval)
-        default_start = now_ms - 500 * interval_ms
+        default_start = now_ms - 1500 * interval_ms
         start_time = parse(Int64, get(params, "start", string(default_start)))
         end_time = parse(Int64, get(params, "end", string(now_ms)))
 
@@ -65,7 +66,7 @@ function setup(port::Int)
 
         now_ms = round(Int64, time() * 1000)
         interval_ms = interval_to_ms(interval)
-        default_start = now_ms - 500 * interval_ms
+        default_start = now_ms - 1500 * interval_ms
         start_time = parse(Int64, get(params, "start", string(default_start)))
         end_time = parse(Int64, get(params, "end", string(now_ms)))
 
@@ -75,7 +76,7 @@ function setup(port::Int)
         close_prices = Float64.(df.close)
         high_prices = Float64.(df.high)
         low_prices = Float64.(df.low)
-        times = Int64.(df.open_time)
+        times = Int64.(div.(df.open_time, 1000))
 
         results = Dict{String,Any}()
         for spec in split(indicators_str, ",")
@@ -104,18 +105,38 @@ end
 function ensure_klines(symbol::String, interval::String, start_ms::Int64, end_ms::Int64)
     existing = DB.get_kline_range(symbol, interval)
     if isnothing(existing)
-        klines = Binance.download_klines_range(symbol, interval, start_ms, end_ms)
+        klines = _fetch_klines_with_vision(symbol, interval, start_ms, end_ms)
         !isempty(klines) && DB.upsert_klines(symbol, interval, klines)
         return
     end
     if start_ms < existing.min_time
-        klines = Binance.download_klines_range(symbol, interval, start_ms, existing.min_time - 1)
+        klines = _fetch_klines_with_vision(symbol, interval, start_ms, existing.min_time - 1)
         !isempty(klines) && DB.upsert_klines(symbol, interval, klines)
     end
     if end_ms > existing.max_time
-        klines = Binance.download_klines_range(symbol, interval, existing.max_time + 1, end_ms)
+        klines = _fetch_klines_with_vision(symbol, interval, existing.max_time + 1, end_ms)
         !isempty(klines) && DB.upsert_klines(symbol, interval, klines)
     end
+end
+
+function _fetch_klines_with_vision(symbol::String, interval::String, start_ms::Int64, end_ms::Int64)
+    klines = try
+        Binance.vision_download_range(symbol, interval, start_ms, end_ms)
+    catch e
+        @warn "Vision download failed, falling back to API: $e"
+        []
+    end
+    if !isempty(klines)
+        last_time = maximum(k[1] for k in klines)
+        if last_time < end_ms
+            api_klines = try
+                Binance.download_klines_range(symbol, interval, last_time + 1, end_ms)
+            catch; [] end
+            append!(klines, api_klines)
+        end
+        return klines
+    end
+    return Binance.download_klines_range(symbol, interval, start_ms, end_ms)
 end
 
 end # module
