@@ -28,5 +28,13 @@ const API = {
         if (start) url += `&start=${start}`;
         if (end_) url += `&end=${end_}`;
         return this._fetch(url);
+    },
+
+    async startBackfill(symbol, currentInterval) {
+        return this._fetch(`/api/backfill/start?symbol=${encodeURIComponent(symbol)}&current_interval=${encodeURIComponent(currentInterval)}`);
+    },
+
+    async getBackfillStatus(symbol) {
+        return this._fetch(`/api/backfill/status?symbol=${encodeURIComponent(symbol)}`);
     }
 };
