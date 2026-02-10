@@ -3,6 +3,7 @@ const Search = {
     dropdown: null,
     debounceTimer: null,
     onSelect: null,
+    synced: false,
 
     init(onSelect) {
         this.input = document.getElementById('symbol-search');
@@ -27,13 +28,27 @@ const Search = {
         });
     },
 
+    async _syncOnce() {
+        if (this.synced) return;
+        this.synced = true;
+        try {
+            await API.syncSymbols();
+        } catch (e) {
+            this.synced = false;
+        }
+    },
+
     async _search() {
         const q = this.input.value.trim();
         if (q.length < 1) {
             this.dropdown.classList.add('hidden');
             return;
         }
-        const data = await API.searchSymbols(q);
+        let data = await API.searchSymbols(q);
+        if (!data.symbols || data.symbols.length === 0) {
+            await this._syncOnce();
+            data = await API.searchSymbols(q);
+        }
         this.dropdown.innerHTML = '';
         if (data.symbols && data.symbols.length > 0) {
             for (const s of data.symbols) {
