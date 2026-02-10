@@ -173,12 +173,18 @@ const ChartManager = {
     },
 
     _handleResize(container) {
-        const observer = new ResizeObserver(entries => {
-            for (const entry of entries) {
-                const { width, height } = entry.contentRect;
+        const updateSize = () => {
+            const rect = container.getBoundingClientRect();
+            const width = Math.floor(rect.width);
+            const height = Math.floor(rect.height);
+            if (width > 0 && height > 0) {
                 this.chart.applyOptions({ width, height });
             }
-        });
+        };
+
+        updateSize();
+
+        const observer = new ResizeObserver(updateSize);
         observer.observe(container);
     }
 };
