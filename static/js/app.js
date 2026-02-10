@@ -9,6 +9,8 @@ const App = {
     currentInterval: '1h',
     _backfillTimer: null,
     _backfillSymbol: null,
+    _refreshTimer: null,
+    _refreshCount: 0,
 
     async init() {
         ChartManager.init(document.getElementById('chart-container'));
@@ -18,7 +20,6 @@ const App = {
             this.currentSymbol = symbol;
             document.getElementById('current-symbol').textContent = symbol;
             this.loadData();
-            this._startBackfill(symbol);
         });
 
         document.querySelectorAll('.interval-btn').forEach(btn => {
@@ -27,7 +28,6 @@ const App = {
                 btn.classList.add('active');
                 this.currentInterval = btn.dataset.interval;
                 this.loadData();
-                this._startBackfill(this.currentSymbol);
             });
         });
 
@@ -59,6 +59,7 @@ const App = {
     },
 
     async loadData() {
+        this._cancelRefresh();
         this.setStatus(`Loading ${this.currentSymbol} ${this.currentInterval}...`);
         ChartManager.clearAllIndicators();
 
@@ -66,7 +67,12 @@ const App = {
             const data = await API.getKlines(this.currentSymbol, this.currentInterval);
             if (data.klines && data.klines.length > 0) {
                 ChartManager.setKlineData(data.klines);
-                this.setStatus(`${this.currentSymbol} ${this.currentInterval} — ${data.count} candles`);
+                if (data.complete) {
+                    this.setStatus(`${this.currentSymbol} ${this.currentInterval} — ${data.count} candles`);
+                } else {
+                    this.setStatus(`${this.currentSymbol} ${this.currentInterval} — ${data.count} candles (loading more...)`);
+                    this._scheduleRefresh();
+                }
                 if (IndicatorUI.activeIndicators.length > 0) {
                     await this.loadIndicators();
                 }
@@ -76,6 +82,47 @@ const App = {
         } catch (e) {
             this.setStatus(`Error: ${e.message}`);
         }
+
+        // Start backfill AFTER main data is loaded (2s delay to avoid resource contention)
+        setTimeout(() => {
+            this._startBackfill(this.currentSymbol);
+        }, 2000);
+    },
+
+    _cancelRefresh() {
+        if (this._refreshTimer) {
+            clearTimeout(this._refreshTimer);
+            this._refreshTimer = null;
+        }
+        this._refreshCount = 0;
+    },
+
+    _scheduleRefresh() {
+        this._cancelRefresh();
+        this._doRefresh();
+    },
+
+    _doRefresh() {
+        if (this._refreshCount >= 10) return;
+        this._refreshTimer = setTimeout(async () => {
+            try {
+                const data = await API.getKlines(this.currentSymbol, this.currentInterval);
+                if (data.klines && data.klines.length > 0) {
+                    ChartManager.setKlineData(data.klines);
+                    if (data.complete) {
+                        this.setStatus(`${this.currentSymbol} ${this.currentInterval} — ${data.count} candles`);
+                        if (IndicatorUI.activeIndicators.length > 0) {
+                            await this.loadIndicators();
+                        }
+                        return;
+                    }
+                    this.setStatus(`${this.currentSymbol} ${this.currentInterval} — ${data.count} candles (loading more...)`);
+                }
+            } catch (e) {
+            }
+            this._refreshCount++;
+            this._doRefresh();
+        }, 3000);
     },
 
     async loadIndicators() {
