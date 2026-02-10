@@ -95,4 +95,10 @@ const App = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => {
+    App.init().catch(e => {
+        console.error('App init failed:', e);
+        const status = document.getElementById('status-bar');
+        if (status) status.textContent = `Init error: ${e.message}`;
+    });
+});
