@@ -2,7 +2,7 @@
 module Server
 
 using Oxygen, HTTP, JSON3, DataFrames
-using ..DB, ..Binance, ..Indicators
+using ..DB, ..Binance, ..Indicators, ..Backfill
 
 function setup(port::Int)
     staticfiles(joinpath(@__DIR__, "..", "static"), "/")
@@ -90,6 +90,25 @@ function setup(port::Int)
             end
         end
         return json(results)
+    end
+
+    @get "/api/backfill/start" function(req)
+        params = queryparams(req)
+        symbol = get(params, "symbol", "")
+        current_interval = get(params, "current_interval", "1h")
+        isempty(symbol) && return json(Dict("error" => "symbol required"), status=400)
+
+        started = Backfill.start(symbol, current_interval)
+        return json(Dict("status" => started ? "started" : "already_running"))
+    end
+
+    @get "/api/backfill/status" function(req)
+        params = queryparams(req)
+        symbol = get(params, "symbol", "")
+        isempty(symbol) && return json(Dict("error" => "symbol required"), status=400)
+
+        status = Backfill.get_status(symbol)
+        return json(status)
     end
 
     serve(port=port, host="0.0.0.0", async=false)
