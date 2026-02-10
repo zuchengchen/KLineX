@@ -7,6 +7,7 @@ include("types.jl")
 include("db.jl")
 include("binance.jl")
 include("indicators.jl")
+include("backfill.jl")
 include("server.jl")
 
 function start(; port::Int=8888, open_browser::Bool=true)
