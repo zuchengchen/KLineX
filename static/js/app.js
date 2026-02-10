@@ -1,9 +1,16 @@
+const INTERVAL_MS = {
+    '1m': 60000, '3m': 180000, '5m': 300000, '15m': 900000, '30m': 1800000,
+    '1h': 3600000, '2h': 7200000, '4h': 14400000, '6h': 21600000, '8h': 28800000, '12h': 43200000,
+    '1d': 86400000, '3d': 259200000, '1w': 604800000, '1M': 2592000000,
+};
+
 const App = {
     currentSymbol: 'BTCUSDT',
     currentInterval: '1h',
 
     async init() {
         ChartManager.init(document.getElementById('chart-container'));
+        ChartManager.setOnLoadMore(() => this._loadMore());
 
         Search.init((symbol) => {
             this.currentSymbol = symbol;
@@ -22,15 +29,26 @@ const App = {
 
         IndicatorUI.init(() => this.loadIndicators());
 
-        this.setStatus('Syncing symbols from Binance...');
-        try {
-            await API.syncSymbols();
-            this.setStatus('Symbols synced. Loading chart...');
-        } catch (e) {
-            this.setStatus('Failed to sync symbols (offline mode)');
-        }
-
         await this.loadData();
+    },
+
+    async _loadMore() {
+        const earliest = ChartManager.getEarliestTime();
+        if (!earliest) return;
+        const endMs = earliest * 1000 - 1;
+        const intervalMs = INTERVAL_MS[this.currentInterval] || 3600000;
+        const startMs = endMs - 1500 * intervalMs;
+        this.setStatus('Loading more...');
+        try {
+            const data = await API.getKlines(this.currentSymbol, this.currentInterval, startMs, endMs);
+            if (data.klines && data.klines.length > 0) {
+                ChartManager.prependKlineData(data.klines);
+            }
+            const total = ChartManager._klineData.length;
+            this.setStatus(`${this.currentSymbol} ${this.currentInterval} — ${total} candles`);
+        } catch (e) {
+            this.setStatus(`Load more error: ${e.message}`);
+        }
     },
 
     async loadData() {

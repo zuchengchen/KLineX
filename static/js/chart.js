@@ -4,6 +4,9 @@ const ChartManager = {
     volumeSeries: null,
     seriesMap: new Map(),
     nextPaneIndex: 1,
+    _klineData: [],
+    _onLoadMore: null,
+    _loadingMore: false,
 
     init(container) {
         this.chart = LightweightCharts.createChart(container, {
@@ -35,12 +38,41 @@ const ChartManager = {
             }
         );
 
+        this._setupInfiniteScroll();
         this._handleResize(container);
     },
 
+    setOnLoadMore(fn) {
+        this._onLoadMore = fn;
+    },
+
+    _setupInfiniteScroll() {
+        this.chart.timeScale().subscribeVisibleLogicalRangeChange(logicalRange => {
+            if (!logicalRange || this._loadingMore || !this._onLoadMore) return;
+            if (logicalRange.from < 10) {
+                this._loadingMore = true;
+                this._onLoadMore().finally(() => { this._loadingMore = false; });
+            }
+        });
+    },
+
     setKlineData(klines) {
+        this._klineData = klines;
         this.candlestickSeries.setData(klines);
         this.chart.timeScale().fitContent();
+    },
+
+    prependKlineData(olderKlines) {
+        if (!olderKlines.length) return;
+        const existingTimes = new Set(this._klineData.map(k => k.time));
+        const deduped = olderKlines.filter(k => !existingTimes.has(k.time));
+        if (!deduped.length) return;
+        this._klineData = [...deduped, ...this._klineData];
+        this.candlestickSeries.setData(this._klineData);
+    },
+
+    getEarliestTime() {
+        return this._klineData.length > 0 ? this._klineData[0].time : null;
     },
 
     addOverlaySeries(spec, data, color) {
