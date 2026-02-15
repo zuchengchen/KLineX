@@ -121,6 +121,27 @@ function setup(port::Int)
         return json(status)
     end
 
+    @get "/api/watchlist" function(req)
+        user_id = get(req.headers, "X-User-ID", "default")
+        symbols = DB.get_watchlist(user_id)
+        return json(Dict("symbols" => collect(symbols)))
+    end
+
+    @post "/api/watchlist/add" function(req)
+        user_id = get(req.headers, "X-User-ID", "default")
+        body = JSON3.read(req.body)
+        symbol = body["symbol"]
+        DB.add_to_watchlist(user_id, symbol)
+        return json(Dict("status" => "ok"))
+    end
+
+    @delete "/api/watchlist/remove/:symbol" function(req)
+        user_id = get(req.headers, "X-User-ID", "default")
+        symbol = req.params.symbol
+        DB.remove_from_watchlist(user_id, symbol)
+        return json(Dict("status" => "ok"))
+    end
+
     serve(port=port, host="0.0.0.0", async=false)
 end
 
