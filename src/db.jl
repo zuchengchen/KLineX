@@ -46,6 +46,19 @@ function init()
         CREATE INDEX IF NOT EXISTS idx_klines_lookup
         ON klines(symbol, interval, open_time)
     """)
+    DBInterface.execute(db, """
+        CREATE TABLE IF NOT EXISTS watchlist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            symbol TEXT NOT NULL,
+            added_at INTEGER NOT NULL,
+            UNIQUE(user_id, symbol)
+        )
+    """)
+    DBInterface.execute(db, """
+        CREATE INDEX IF NOT EXISTS idx_watchlist_user
+        ON watchlist(user_id)
+    """)
     println("Database initialized at $DB_PATH")
 end
 
@@ -127,6 +140,34 @@ function get_klines(symbol::String, interval::String; start_time::Union{Int64,No
     end
     query *= " ORDER BY open_time ASC"
     return DBInterface.execute(db, query, params) |> DataFrame
+end
+
+function get_watchlist(user_id::String)
+    db = get_db()
+    result = DBInterface.execute(db, """
+        SELECT symbol FROM watchlist
+        WHERE user_id = ?
+        ORDER BY added_at
+    """, [user_id])
+    df = DataFrame(result)
+    return df.symbol
+end
+
+function add_to_watchlist(user_id::String, symbol::String)
+    db = get_db()
+    now = round(Int64, time() * 1000)
+    DBInterface.execute(db, """
+        INSERT OR IGNORE INTO watchlist (user_id, symbol, added_at)
+        VALUES (?, ?, ?)
+    """, [user_id, symbol, now])
+end
+
+function remove_from_watchlist(user_id::String, symbol::String)
+    db = get_db()
+    DBInterface.execute(db, """
+        DELETE FROM watchlist
+        WHERE user_id = ? AND symbol = ?
+    """, [user_id, symbol])
 end
 
 end # module
